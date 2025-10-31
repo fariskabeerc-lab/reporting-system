@@ -13,7 +13,7 @@ st.set_page_config(page_title="Outlet & Feedback Dashboard", layout="wide")
 # GOOGLE SHEETS SETUP (NEW Section)
 # ==========================================
 # 1. Configuration - REPLACE WITH YOUR SHEET URL
-SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_MASTER_SHEET_ID_HERE/edit"
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=1883887055#gid=1883887055"
 ITEMS_SHEET_NAME = "Items"
 FEEDBACK_SHEET_NAME = "Feedback"
 
