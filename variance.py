@@ -59,8 +59,8 @@ div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label 
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 40px; 
-    height: 40px; 
+    width: 40px;  
+    height: 40px;  
     border: 1px solid #ccc;
     border-radius: 4px;
     margin: 5px;
@@ -122,7 +122,8 @@ def inject_numeric_keyboard_script(target_label):
                 if (label.textContent.includes('{target_label}')) {{
                     const input = label.nextElementSibling.querySelector('input');
                     if (input) {{
-                        input.setAttribute('inputmode', 'numeric');
+                        // Use 'tel' inputmode for better mobile experience for phone numbers
+                        input.setAttribute('inputmode', 'tel'); 
                         input.setAttribute('pattern', '[0-9]*');
                     }}
                 }}
@@ -158,7 +159,7 @@ def load_item_data():
     except FileNotFoundError:
         st.error(f"⚠️ Data file not found: {file_path}. Please ensure the file is in the application directory.")
     except Exception as e:
-         st.error(f"⚠️ Error loading alllist.xlsx: {e}")
+        st.error(f"⚠️ Error loading alllist.xlsx: {e}")
     return pd.DataFrame()
 
 item_data = load_item_data()
@@ -575,57 +576,59 @@ else:
     # CUSTOMER FEEDBACK PAGE (MODIFIED: Submission Logic)
     # ==========================================
     else:
-    outlet_name = st.session_state.selected_outlet
-    st.title("📝 Customer Feedback Form")
-    st.markdown(f"Submitting feedback for **{outlet_name}**")
-    st.markdown("---")
-
-    with st.form("feedback_form", clear_on_submit=True):
-        name = st.text_input("Customer Name")
-        # --- MODIFIED: Changed Email to Mobile Number ---
-        mobile_number = st.text_input("Mobile Number (Optional)", placeholder="e.g., +971501234567")
+        outlet_name = st.session_state.selected_outlet
+        st.title("📝 Customer Feedback Form")
+        st.markdown(f"Submitting feedback for **{outlet_name}**")
+        st.markdown("---")
         
-        st.markdown("🌟 **Rate Our Outlet**")
-        # --- CUSTOM RATING IMPLEMENTATION ---
-        rating = st.radio(
-            "hidden_rating_label", # Use a label that won't show
-            options=[1, 2, 3, 4, 5],
-            index=4, # Default to 5
-            horizontal=True, # Critical for the horizontal layout
-            key="customer_rating_radio",
-            label_visibility="collapsed" # Hide the label
-        )
-        
-        feedback = st.text_area("Your Feedback (Required)")
-        submitted = st.form_submit_button("📤 Submit Feedback")
+        # Inject the script to change the mobile number field's inputmode
+        inject_numeric_keyboard_script("Mobile Number") # NEW: For mobile number field
 
-    if submitted:
-        # Check if Name and Feedback are filled (Mobile is optional, so no need to check)
-        if name.strip() and feedback.strip():
-            new_feedback_entry = {
-                "Customer Name": name,
-                # --- MODIFIED: Capture Mobile Number ---
-                "Mobile Number": mobile_number if mobile_number.strip() else "N/A", 
-                "Rating": f"{rating} / 5",
-                "Outlet": outlet_name,
-                "Feedback": feedback,
-                "Submitted At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
+        with st.form("feedback_form", clear_on_submit=True):
+            name = st.text_input("Customer Name")
             
-            # --- NEW: Submit to Google Sheet ---
-            if submit_feedback_to_sheets(new_feedback_entry):
-                st.session_state.submitted_feedback.append(new_feedback_entry)
-                st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
-        else:
-            st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
+            # --- MODIFIED: Changed Email to Mobile Number Input ---
+            mobile_number = st.text_input("Mobile Number (Optional)", placeholder="e.g., +971501234567")
+            
+            st.markdown("🌟 **Rate Our Outlet**")
+            # --- CUSTOM RATING IMPLEMENTATION ---
+            rating = st.radio(
+                "hidden_rating_label", # Use a label that won't show
+                options=[1, 2, 3, 4, 5],
+                index=4, # Default to 5
+                horizontal=True, # Critical for the horizontal layout
+                key="customer_rating_radio",
+                label_visibility="collapsed" # Hide the label
+            )
+            
+            feedback = st.text_area("Your Feedback (Required)")
+            submitted = st.form_submit_button("📤 Submit Feedback")
 
-    if st.session_state.submitted_feedback:
-        st.markdown("### 🗂 Recent Customer Feedback")
-        df = pd.DataFrame(st.session_state.submitted_feedback)
-        # Exclude the "Email" column, and include "Mobile Number" if it was used in previous code
-        # The DataFrame creation handles the new column names implicitly
-        st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+        if submitted:
+            if name.strip() and feedback.strip():
+                new_feedback_entry = {
+                    "Customer Name": name,
+                    # --- MODIFIED: Capture Mobile Number ---
+                    "Mobile Number": mobile_number if mobile_number.strip() else "N/A",  
+                    "Rating": f"{rating} / 5",
+                    "Outlet": outlet_name,
+                    "Feedback": feedback,
+                    "Submitted At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                
+                # --- NEW: Submit to Google Sheet ---
+                if submit_feedback_to_sheets(new_feedback_entry):
+                    st.session_state.submitted_feedback.append(new_feedback_entry)
+                    st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
+            else:
+                st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
 
-        if st.button("🗑 Clear All Feedback Records", type="secondary"):
-            st.session_state.submitted_feedback = []
-            st.rerun()
+        if st.session_state.submitted_feedback:
+            st.markdown("### 🗂 Recent Customer Feedback")
+            df = pd.DataFrame(st.session_state.submitted_feedback)
+            # The DataFrame will now correctly show the "Mobile Number" column
+            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+
+            if st.button("🗑 Clear All Feedback Records", type="secondary"):
+                st.session_state.submitted_feedback = []
+                st.rerun()
