@@ -139,7 +139,7 @@ def load_item_data():
     # Ensure you are using the correct filename.
     # The error mentioned 'alllist.xlsx', but you mentioned 'alllist(1).xlsx'.
     # I will stick to the original name 'alllist.xlsx' unless you confirm the change.
-    file_path = "alllist.xlsx" 
+    file_path = "alllist(1).xlsx" 
     
     # Check if the user is loading 'alllist(1).xlsx' instead of 'alllist.xlsx'
     # If the file is named 'alllist(1).xlsx', you must change the file_path above.
