@@ -571,10 +571,10 @@ else:
                             st.rerun()
 
     
-   # ==========================================
-# CUSTOMER FEEDBACK PAGE (MODIFIED: Mobile Number)
-# ==========================================
-else:
+    # ==========================================
+    # CUSTOMER FEEDBACK PAGE (MODIFIED: Submission Logic)
+    # ==========================================
+    else:
     outlet_name = st.session_state.selected_outlet
     st.title("📝 Customer Feedback Form")
     st.markdown(f"Submitting feedback for **{outlet_name}**")
