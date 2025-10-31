@@ -625,12 +625,3 @@ else:
                     st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
             else:
                 st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
-
-        if st.session_state.submitted_feedback:
-            st.markdown("### 🗂 Recent Customer Feedback")
-            df = pd.DataFrame(st.session_state.submitted_feedback)
-            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-
-            if st.button("🗑 Clear All Feedback Records", type="secondary"):
-                st.session_state.submitted_feedback = []
-                st.rerun()
