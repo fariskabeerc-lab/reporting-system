@@ -144,7 +144,7 @@ def inject_numeric_keyboard_script(target_label):
 @st.cache_data
 def load_item_data():
     # NOTE: The actual file "alllist.xlsx" must be present in the directory 
-    file_path = "alllist.xlsx" 
+    file_path = "ItemSearchList_31102025_1159 (1).xlsx" 
     try:
         df = pd.read_excel(file_path)
         # Ensure column names are clean
