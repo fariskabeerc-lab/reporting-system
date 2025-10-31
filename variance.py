@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials
 st.set_page_config(page_title="Outlet & Feedback Dashboard", layout="wide")
 
 # ==========================================
-# GOOGLE SHEETS SETUP
+# GOOGLE SHEETS SETUP (NEW Section)
 # ==========================================
 # 1. Configuration - REPLACE WITH YOUR SHEET URL
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=0#gid=0"
@@ -44,71 +44,88 @@ except Exception as e:
 # ==========================================
 CUSTOM_RATING_CSS = """
 <style>
-/* --- 1. General Styling for both Outlet/Item Rating and Customer Feedback Rating --- */
+/* --- Original Item Entry Form CSS (Preserved) --- */
 /* Target the div that contains the radio buttons */
-/* The Feedback form uses a different st.form structure than the Item Form.
-   We need to ensure the CSS targets the correct radio group structure. */
-div[role="radiogroup"] {
+div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div > div:nth-child(3) > div {
     display: flex; /* Makes the rating options sit in a row */
     justify-content: space-around;
     align-items: center;
     padding: 10px 0;
 }
 
-/* Style for each individual rating box (General style) */
-div[role="radiogroup"] label {
+/* Style for each individual rating box */
+div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 45px;
-    height: 45px;
+    width: 40px; 
+    height: 40px; 
     border: 1px solid #ccc;
-    border-radius: 6px;
+    border-radius: 4px;
     margin: 5px;
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s;
     user-select: none;
-    position: relative; /* For positioning the checkmark */
 }
 
-/* Hide the default Streamlit radio circle */
-div[role="radiogroup"] label input {
-    display: none;
+/* Style for the text inside the box (the number) */
+div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label > div {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
 }
 
-/* --- 2. Specific Styling for the ORIGINAL ITEM ENTRY RATING (if applicable) --- */
-/* This is based on the original structure and ensures numbers look like boxes */
-/* Since Item Entry doesn't use a rating, this section is now just for context 
-   but the original CSS structure remains here to avoid breaking it */
-/* (In this app, there is no numerical radio button rating for items, so this is partially redundant, 
-   but kept structured for potential future use or to match the user's initial structure logic.) */
-
+/* Style when the radio button is checked (the green effect) */
 div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input:checked + div {
     background-color: #38C172 !important; /* Green background */
     border-color: #38C172 !important; /* Green border */
     color: white !important; /* White text */
 }
 
-/* --- 3. Specific Styling for the NEW EMOJI FEEDBACK RATING --- */
+/* Hides the default Streamlit radio circle */
+div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input {
+    display: none;
+}
 
-/* Target the Customer Feedback form by checking its content (rating element) */
-/* Selector for the rating box content (the emoji) in the feedback form */
-div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label > div > div > div {
-    font-size: 30px !important; /* Large emoji size */
+/* To ensure the green background applies correctly, we need to target the internal div Streamlit uses */
+div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input:checked + div {
+    background-color: #38C172 !important;
+}
+
+/* This targets the actual box content div */
+div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label > div:nth-child(2) > div {
     padding: 0;
     margin: 0;
 }
 
-/* Style when the emoji button is checked (Light green background/border and checkmark) */
-div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label:has(input:checked) {
+
+/* --- NEW EMOJI FEEDBACK STYLING (HIGHLY LOCALIZED) --- */
+
+/* This selector targets the st.radio group ONLY in the Customer Feedback form (the second form block on the page) */
+/* It ensures the styling is limited to the emoji buttons. */
+div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label {
+    width: 50px; /* Make boxes slightly bigger for emojis */
+    height: 50px;
+    border-radius: 8px; 
+    position: relative;
+    padding: 0;
+    margin: 5px;
+}
+
+/* The emoji itself inside the button */
+div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label > div > div > div {
+    font-size: 30px !important; 
+}
+
+/* Style when the emoji button is checked (Light green background/border) */
+div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label:has(input:checked) {
     background-color: #e0ffe0; /* Light green background when selected */
     border-color: #38C172; /* Green border when selected */
 }
 
-/* The Tick Option / Checkmark */
-/* This is a custom checkmark for the selected option in the feedback form */
-div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label input:checked + div::after {
+/* The Checkmark Tick (Always appears above the selected emoji box) */
+div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label input:checked + div::after {
     content: '✅'; /* Checkmark emoji */
     position: absolute;
     top: -10px; 
@@ -118,11 +135,6 @@ div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stR
     border-radius: 50%;
     padding: 2px;
     box-shadow: 0 0 5px rgba(0,0,0,0.2);
-}
-
-/* Ensure the label text (for number rating) is hidden inside the emoji buttons */
-div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label > div {
-    font-size: 16px; /* Revert to normal for text */
 }
 
 </style>
@@ -224,6 +236,7 @@ def update_supplier_state():
 # --- Lookup Logic Function (Callback for Barcode Form) --- (Existing)
 def lookup_item_and_update_state():
     """Performs the barcode lookup and updates relevant session state variables."""
+    # (Function logic remains the same)
     barcode = st.session_state.lookup_barcode_input
     
     # Reset lookup and previous item states
@@ -293,7 +306,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     gp = ((selling - cost) / cost * 100) if cost else 0
 
     st.session_state.submitted_items.append({
-        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # Add submission timestamp
+        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # NEW: Add submission timestamp
         "Form Type": form_type,
         "Barcode": barcode.strip(),
         "Item Name": item_name.strip(),
@@ -320,7 +333,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
 
 
 # -------------------------------------------------
-# --- Function to Submit ALL Collected Data to Google Sheets ---
+# --- NEW: Function to Submit ALL Collected Data to Google Sheets ---
 # -------------------------------------------------
 def submit_all_items_to_sheets():
     """Takes all items in session_state and appends them to the Items Google Sheet."""
@@ -358,7 +371,7 @@ def submit_all_items_to_sheets():
 # -------------------------------------------------
 
 # -------------------------------------------------
-# --- Function to Submit Single Feedback to Google Sheets ---
+# --- NEW: Function to Submit Single Feedback to Google Sheets ---
 # -------------------------------------------------
 def submit_feedback_to_sheets(feedback_entry):
     """Appends a single feedback entry (dictionary) to the Feedback Google Sheet."""
@@ -416,7 +429,7 @@ else:
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
 
     # ==========================================
-    # OUTLET DASHBOARD 
+    # OUTLET DASHBOARD (MODIFIED: Submit Button)
     # ==========================================
     if page == "Outlet Dashboard":
         outlet_name = st.session_state.selected_outlet
@@ -565,8 +578,8 @@ else:
 
             col_submit, col_delete = st.columns([1, 1])
             with col_submit:
-                if st.button("📤 Submit All", type="primary"):
-                    if submit_all_items_to_sheets():
+                if st.button("📤 Submit All", type="primary"): # MODIFIED BUTTON LABEL
+                    if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
                         # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
                         st.session_state.barcode_value = ""
@@ -615,6 +628,8 @@ else:
             st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
             
             # --- EMOJI RATING IMPLEMENTATION ---
+            # options: The actual values stored (1, 2, 3, 4, 5)
+            # format_func: The function that displays the corresponding emoji
             rating = st.radio(
                 "hidden_rating_label", # Use a label that won't show
                 options=list(EMOJI_RATING_MAP.keys()),
