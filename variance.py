@@ -583,7 +583,7 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name")
             
-            st.markdown("🌟 **Rate Our Outlet**")
+            st.markdown("🌟 **Rate Our Outlet from 1-5**")
             # --- CUSTOM RATING IMPLEMENTATION ---
             rating = st.radio(
                 "hidden_rating_label", # Use a label that won't show
