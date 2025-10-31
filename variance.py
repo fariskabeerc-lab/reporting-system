@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import gspread # NEW: Import gspread
-from google.oauth2.service_account import Credentials # NEW: Import Credentials
+import gspread 
+from google.oauth2.service_account import Credentials 
 
 # ==========================================
 # PAGE CONFIG
@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials # NEW: Import Credentials
 st.set_page_config(page_title="Outlet & Feedback Dashboard", layout="wide")
 
 # ==========================================
-# GOOGLE SHEETS SETUP (NEW Section)
+# GOOGLE SHEETS SETUP
 # ==========================================
 # 1. Configuration - REPLACE WITH YOUR SHEET URL
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=0#gid=0"
@@ -40,70 +40,91 @@ except Exception as e:
     sheets_connected = False
 
 # ==========================================
-# CUSTOM STYLES (Existing)
+# CUSTOM STYLES (MODIFIED for Emoji Rating)
 # ==========================================
-# ... (CUSTOM_RATING_CSS remains the same) ...
 CUSTOM_RATING_CSS = """
 <style>
+/* --- 1. General Styling for both Outlet/Item Rating and Customer Feedback Rating --- */
 /* Target the div that contains the radio buttons */
-div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div > div:nth-child(3) > div {
+/* The Feedback form uses a different st.form structure than the Item Form.
+   We need to ensure the CSS targets the correct radio group structure. */
+div[role="radiogroup"] {
     display: flex; /* Makes the rating options sit in a row */
     justify-content: space-around;
     align-items: center;
     padding: 10px 0;
 }
 
-/* Style for each individual rating box */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label {
+/* Style for each individual rating box (General style) */
+div[role="radiogroup"] label {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 40px; 
-    height: 40px; 
+    width: 45px;
+    height: 45px;
     border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 6px;
     margin: 5px;
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s;
-    user-select: none; /* Prevents text selection on tap */
+    user-select: none;
+    position: relative; /* For positioning the checkmark */
 }
 
-/* Style for the text inside the box (the number) */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label > div {
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
+/* Hide the default Streamlit radio circle */
+div[role="radiogroup"] label input {
+    display: none;
 }
 
-/* Style when the radio button is checked (the green effect) */
+/* --- 2. Specific Styling for the ORIGINAL ITEM ENTRY RATING (if applicable) --- */
+/* This is based on the original structure and ensures numbers look like boxes */
+/* Since Item Entry doesn't use a rating, this section is now just for context 
+   but the original CSS structure remains here to avoid breaking it */
+/* (In this app, there is no numerical radio button rating for items, so this is partially redundant, 
+   but kept structured for potential future use or to match the user's initial structure logic.) */
+
 div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input:checked + div {
     background-color: #38C172 !important; /* Green background */
     border-color: #38C172 !important; /* Green border */
     color: white !important; /* White text */
 }
 
-/* Hides the default Streamlit radio circle */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input {
-    display: none;
-}
+/* --- 3. Specific Styling for the NEW EMOJI FEEDBACK RATING --- */
 
-/* Apply the checked style to the parent label div */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input:checked {
-    /* This rule is complex in Streamlit's shadow DOM. We rely on the checked + div selector above. */
-}
-
-/* To ensure the green background applies correctly, we need to target the internal div Streamlit uses */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label input:checked + div {
-    /* Streamlit structure is complex, this targets the inner container of the radio button. */
-    background-color: #38C172 !important;
-}
-
-/* This targets the actual box content div */
-div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label > div:nth-child(2) > div {
+/* Target the Customer Feedback form by checking its content (rating element) */
+/* Selector for the rating box content (the emoji) in the feedback form */
+div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label > div > div > div {
+    font-size: 30px !important; /* Large emoji size */
     padding: 0;
     margin: 0;
 }
+
+/* Style when the emoji button is checked (Light green background/border and checkmark) */
+div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label:has(input:checked) {
+    background-color: #e0ffe0; /* Light green background when selected */
+    border-color: #38C172; /* Green border when selected */
+}
+
+/* The Tick Option / Checkmark */
+/* This is a custom checkmark for the selected option in the feedback form */
+div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label input:checked + div::after {
+    content: '✅'; /* Checkmark emoji */
+    position: absolute;
+    top: -10px; 
+    right: -10px; 
+    font-size: 16px;
+    background-color: white;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+}
+
+/* Ensure the label text (for number rating) is hidden inside the emoji buttons */
+div[data-testid="stForm"] > div > div:nth-child(4) > div > div > div:has(div.stRadio) div[role="radiogroup"] label > div {
+    font-size: 16px; /* Revert to normal for text */
+}
+
 </style>
 """
 # ==========================================
@@ -175,10 +196,10 @@ password = "123123"
 
 # Initialize session state variables (Existing)
 for key in ["logged_in", "selected_outlet", "submitted_items",
-             "barcode_value", "item_name_input", "supplier_input", 
-             "temp_item_name_manual", "temp_supplier_manual",
-             "lookup_data", "submitted_feedback", "barcode_found",
-             "staff_name"]: 
+            "barcode_value", "item_name_input", "supplier_input", 
+            "temp_item_name_manual", "temp_supplier_manual",
+            "lookup_data", "submitted_feedback", "barcode_found",
+            "staff_name"]: 
     
     if key not in st.session_state:
         if key in ["submitted_items", "submitted_feedback"]:
@@ -203,7 +224,6 @@ def update_supplier_state():
 # --- Lookup Logic Function (Callback for Barcode Form) --- (Existing)
 def lookup_item_and_update_state():
     """Performs the barcode lookup and updates relevant session state variables."""
-    # (Function logic remains the same)
     barcode = st.session_state.lookup_barcode_input
     
     # Reset lookup and previous item states
@@ -273,7 +293,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     gp = ((selling - cost) / cost * 100) if cost else 0
 
     st.session_state.submitted_items.append({
-        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # NEW: Add submission timestamp
+        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # Add submission timestamp
         "Form Type": form_type,
         "Barcode": barcode.strip(),
         "Item Name": item_name.strip(),
@@ -300,13 +320,13 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
 
 
 # -------------------------------------------------
-# --- NEW: Function to Submit ALL Collected Data to Google Sheets ---
+# --- Function to Submit ALL Collected Data to Google Sheets ---
 # -------------------------------------------------
 def submit_all_items_to_sheets():
     """Takes all items in session_state and appends them to the Items Google Sheet."""
     if not sheets_connected:
         st.error("Cannot submit: Google Sheets not connected.")
-        return
+        return False
 
     df_to_upload = pd.DataFrame(st.session_state.submitted_items)
     
@@ -322,7 +342,7 @@ def submit_all_items_to_sheets():
              items_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{ITEMS_SHEET_NAME}': {e}")
-        return
+        return False
 
     # Convert DataFrame to a list of lists (rows)
     data_rows = df_to_upload.values.tolist()
@@ -338,7 +358,7 @@ def submit_all_items_to_sheets():
 # -------------------------------------------------
 
 # -------------------------------------------------
-# --- NEW: Function to Submit Single Feedback to Google Sheets ---
+# --- Function to Submit Single Feedback to Google Sheets ---
 # -------------------------------------------------
 def submit_feedback_to_sheets(feedback_entry):
     """Appends a single feedback entry (dictionary) to the Feedback Google Sheet."""
@@ -396,7 +416,7 @@ else:
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
 
     # ==========================================
-    # OUTLET DASHBOARD (MODIFIED: Submit Button)
+    # OUTLET DASHBOARD 
     # ==========================================
     if page == "Outlet Dashboard":
         outlet_name = st.session_state.selected_outlet
@@ -524,7 +544,7 @@ else:
                 final_item_name,             
                 qty,         
                 cost,    
-                selling, 
+                selling,
                 expiry,      
                 final_supplier,              
                 remarks,     
@@ -545,8 +565,8 @@ else:
 
             col_submit, col_delete = st.columns([1, 1])
             with col_submit:
-                if st.button("📤 Submit All", type="primary"): # MODIFIED BUTTON LABEL
-                    if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
+                if st.button("📤 Submit All", type="primary"):
+                    if submit_all_items_to_sheets():
                         # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
                         st.session_state.barcode_value = ""
@@ -572,7 +592,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (MODIFIED: Submission Logic)
+    # CUSTOMER FEEDBACK PAGE (MODIFIED: EMOJI RATING)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -580,37 +600,50 @@ else:
         st.markdown(f"Submitting feedback for **{outlet_name}**")
         st.markdown("---")
 
+        # Define the emoji mapping for clarity
+        EMOJI_RATING_MAP = {
+            1: "😡", # Angry (Bad)
+            2: "😞", # Disappointed
+            3: "😐", # Neutral
+            4: "🙂", # Smiling
+            5: "🤩", # Star-struck (Excellent)
+        }
+
         with st.form("feedback_form", clear_on_submit=True):
-            name = st.text_input("Customer Name")
+            name = st.text_input("Customer Name (Optional)")
             
-            st.markdown("🌟 **Rate Our Outlet from 1 to 5**")
-            # --- CUSTOM RATING IMPLEMENTATION ---
+            st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
+            
+            # --- EMOJI RATING IMPLEMENTATION ---
             rating = st.radio(
                 "hidden_rating_label", # Use a label that won't show
-                options=[1, 2, 3, 4, 5],
+                options=list(EMOJI_RATING_MAP.keys()),
                 index=4, # Default to 5
                 horizontal=True, # Critical for the horizontal layout
                 key="customer_rating_radio",
-                label_visibility="collapsed" # Hide the label
+                label_visibility="collapsed", # Hide the label
+                # Use the format_func to display the emoji instead of the number
+                format_func=lambda x: EMOJI_RATING_MAP[x] 
             )
             
-            feedback = st.text_area("Your Feedback (Required)")
+            feedback = st.text_area("Your Detailed Feedback (Required)")
             submitted = st.form_submit_button("📤 Submit Feedback")
 
         if submitted:
-            if name.strip() and feedback.strip():
+            # Name is now optional, so we only check feedback
+            if feedback.strip():
                 new_feedback_entry = {
-                    "Customer Name": name,
-                    "Email": "N/A", 
-                    "Rating": f"{rating} / 5",
+                    "Customer Name": name.strip() if name else "Anonymous",
+                    "Email": "N/A",  
+                    "Rating": f"{rating} / 5", # The sheet will receive the numerical value
                     "Outlet": outlet_name,
                     "Feedback": feedback,
                     "Submitted At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-                # --- NEW: Submit to Google Sheet ---
+                # --- Submit to Google Sheet ---
                 if submit_feedback_to_sheets(new_feedback_entry):
-                    st.session_state.submitted_feedback.append(new_feedback_entry)
+                    st.session_state.submitted_feedback.append(new_feedback_entry) 
                     st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
             else:
-                st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
+                st.error("⚠️ The **Detailed Feedback** field is required before submitting.")
