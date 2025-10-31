@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import gspread # NEW: Import gspread
-from google.oauth2.service_account import Credentials # NEW: Import Credentials
+import gspread 
+from google.oauth2.service_account import Credentials 
 
 # ==========================================
 # PAGE CONFIG
@@ -40,9 +40,10 @@ except Exception as e:
     sheets_connected = False
 
 # ==========================================
-# CUSTOM STYLES (Existing)
+# CUSTOM STYLES (Existing - Removed custom radio CSS for cleaner st.feedback)
 # ==========================================
-# ... (CUSTOM_RATING_CSS remains the same) ...
+# NOTE: The CUSTOM_RATING_CSS is now defined but will not be used 
+# when st.feedback is implemented, but kept here for reference if you switch back.
 CUSTOM_RATING_CSS = """
 <style>
 /* Target the div that contains the radio buttons */
@@ -274,7 +275,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     gp = ((selling - cost) / cost * 100) if cost else 0
 
     st.session_state.submitted_items.append({
-        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # NEW: Add submission timestamp
+        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
         "Form Type": form_type,
         "Barcode": barcode.strip(),
         "Item Name": item_name.strip(),
@@ -301,7 +302,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
 
 
 # -------------------------------------------------
-# --- NEW: Function to Submit ALL Collected Data to Google Sheets ---
+# --- Function to Submit ALL Collected Data to Google Sheets ---
 # -------------------------------------------------
 def submit_all_items_to_sheets():
     """Takes all items in session_state and appends them to the Items Google Sheet."""
@@ -312,14 +313,11 @@ def submit_all_items_to_sheets():
     df_to_upload = pd.DataFrame(st.session_state.submitted_items)
     
     # Prepare data rows for gspread
-    # Get header row (in the order you want)
     headers = list(df_to_upload.columns)
     
-    # Check if headers exist in the sheet (simple check by reading first row)
     try:
         current_headers = items_worksheet.row_values(1)
         if not current_headers:
-             # If sheet is empty, write headers first
              items_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{ITEMS_SHEET_NAME}': {e}")
@@ -339,7 +337,7 @@ def submit_all_items_to_sheets():
 # -------------------------------------------------
 
 # -------------------------------------------------
-# --- NEW: Function to Submit Single Feedback to Google Sheets ---
+# --- Function to Submit Single Feedback to Google Sheets ---
 # -------------------------------------------------
 def submit_feedback_to_sheets(feedback_entry):
     """Appends a single feedback entry (dictionary) to the Feedback Google Sheet."""
@@ -354,7 +352,6 @@ def submit_feedback_to_sheets(feedback_entry):
     try:
         current_headers = feedback_worksheet.row_values(1)
         if not current_headers:
-             # If sheet is empty, write headers first
              feedback_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{FEEDBACK_SHEET_NAME}': {e}")
@@ -391,13 +388,14 @@ if not st.session_state.logged_in:
             st.error("❌ Invalid username or password")
 
 else:
-    # APPLY CUSTOM CSS FOR RATING BOXES HERE
-    st.markdown(CUSTOM_RATING_CSS, unsafe_allow_html=True) 
+    # NOTE: The CUSTOM_RATING_CSS is no longer necessary but is commented out
+    # to show that the new widget is used.
+    # st.markdown(CUSTOM_RATING_CSS, unsafe_allow_html=True) 
     
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
 
     # ==========================================
-    # OUTLET DASHBOARD (MODIFIED: Submit Button)
+    # OUTLET DASHBOARD
     # ==========================================
     if page == "Outlet Dashboard":
         outlet_name = st.session_state.selected_outlet
@@ -546,8 +544,8 @@ else:
 
             col_submit, col_delete = st.columns([1, 1])
             with col_submit:
-                if st.button("📤 Submit All to Google Sheets", type="primary"): # MODIFIED BUTTON LABEL
-                    if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
+                if st.button("📤 Submit All to Google Sheets", type="primary"): 
+                    if submit_all_items_to_sheets(): 
                         # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
                         st.session_state.barcode_value = ""
@@ -573,7 +571,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (MODIFIED: Submission Logic)
+    # CUSTOMER FEEDBACK PAGE (MODIFIED: Rating Widget and Submission)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -582,41 +580,46 @@ else:
         st.markdown("---")
         
         # Inject the script to change the mobile number field's inputmode
-        inject_numeric_keyboard_script("Mobile Number") # NEW: For mobile number field
+        inject_numeric_keyboard_script("Mobile Number") 
 
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name")
-            
-            # --- MODIFIED: Changed Email to Mobile Number Input ---
             mobile_number = st.text_input("Mobile Number (Optional)", placeholder="e.g., +971501234567")
             
             st.markdown("🌟 **Rate Our Outlet**")
-            # --- CUSTOM RATING IMPLEMENTATION ---
-            rating = st.radio(
-                "hidden_rating_label", # Use a label that won't show
-                options=[1, 2, 3, 4, 5],
-                index=4, # Default to 5
-                horizontal=True, # Critical for the horizontal layout
-                key="customer_rating_radio",
-                label_visibility="collapsed" # Hide the label
+            
+            # --- MODIFIED: Using st.feedback for a cleaner, official star rating ---
+            # st.feedback returns 0 for 1-star, 1 for 2-stars, ..., 4 for 5-stars.
+            st.feedback(
+                options="stars", 
+                key="customer_rating_stars", 
+                # Optional: set an initial value (e.g., to 5 stars, which is 4 for the widget)
+                # This needs to be done via key/session state for clear_on_submit=True forms
             )
             
             feedback = st.text_area("Your Feedback (Required)")
             submitted = st.form_submit_button("📤 Submit Feedback")
 
         if submitted:
+            # 1. Retrieve the raw value (0-4) from session state
+            submitted_raw_rating = st.session_state.customer_rating_stars
+            
+            # 2. Convert raw rating (0-4) to final integer rating (1-5)
+            # If the user didn't select a rating (it returns None), default to 5
+            final_rating_value = (submitted_raw_rating + 1) if submitted_raw_rating is not None else 5
+            
             if name.strip() and feedback.strip():
                 new_feedback_entry = {
                     "Customer Name": name,
-                    # --- MODIFIED: Capture Mobile Number ---
                     "Mobile Number": mobile_number if mobile_number.strip() else "N/A",  
-                    "Rating": f"{rating} / 5",
+                    # --- MODIFIED: Storing the final integer (1-5) ---
+                    "Rating": final_rating_value,
                     "Outlet": outlet_name,
                     "Feedback": feedback,
                     "Submitted At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-                # --- NEW: Submit to Google Sheet ---
+                # Submit to Google Sheet
                 if submit_feedback_to_sheets(new_feedback_entry):
                     st.session_state.submitted_feedback.append(new_feedback_entry)
                     st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
@@ -626,7 +629,6 @@ else:
         if st.session_state.submitted_feedback:
             st.markdown("### 🗂 Recent Customer Feedback")
             df = pd.DataFrame(st.session_state.submitted_feedback)
-            # The DataFrame will now correctly show the "Mobile Number" column
             st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
 
             if st.button("🗑 Clear All Feedback Records", type="secondary"):
