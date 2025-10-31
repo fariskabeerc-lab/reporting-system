@@ -139,7 +139,7 @@ def inject_numeric_keyboard_script(target_label):
 @st.cache_data
 def load_item_data():
     # NOTE: The actual file "alllist.xlsx" must be present in the directory 
-    file_path = "alllist(1).Xlsx" 
+    file_path = "ItemSearchList_31102025_1159 (1).xlsx" 
     try:
         # **FIX:** Specify the engine for .xlsx format to resolve the error
         df = pd.read_excel(file_path, engine='openpyxl') 
