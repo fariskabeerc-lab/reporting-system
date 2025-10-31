@@ -294,7 +294,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     st.session_state.lookup_data = pd.DataFrame()
     st.session_state.barcode_found = False
     
-    st.toast("✅ Added to list successfully! The form has been cleared.", icon="➕")
+    st.toast("✅ Added to list successfully!", icon="➕")
     return True
 # -------------------------------------------------
 
@@ -611,15 +611,6 @@ else:
                 # --- NEW: Submit to Google Sheet ---
                 if submit_feedback_to_sheets(new_feedback_entry):
                     st.session_state.submitted_feedback.append(new_feedback_entry)
-                    st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
+                    st.success("✅ Feedback submitted successfully")
             else:
                 st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
-
-        if st.session_state.submitted_feedback:
-            st.markdown("### 🗂 Recent Customer Feedback")
-            df = pd.DataFrame(st.session_state.submitted_feedback)
-            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-
-            if st.button("🗑 Clear All Feedback Records", type="secondary"):
-                st.session_state.submitted_feedback = []
-                st.rerun()
