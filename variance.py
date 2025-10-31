@@ -36,8 +36,6 @@ try:
     # Flag for successful connection
     sheets_connected = True
 except Exception as e:
-    # Use a warning instead of a hard error to allow the UI to load for testing, 
-    # but submission won't work.
     st.warning(f"⚠️ Google Sheets Connection Issue: Ensure 'google_service_account' is set up. Submissions are disabled. Error: {e}")
     sheets_connected = False
 
@@ -422,6 +420,11 @@ else:
     st.markdown(CUSTOM_RATING_CSS, unsafe_allow_html=True) 
     
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
+    
+    # --- Inject script for Mobile Number field if on Feedback page ---
+    if page == "Customer Feedback":
+        inject_numeric_keyboard_script("Mobile Number")
+
 
     # ==========================================
     # OUTLET DASHBOARD 
@@ -600,7 +603,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (EMOJI RATING)
+    # CUSTOMER FEEDBACK PAGE (EMOJI RATING & Mobile)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -620,6 +623,12 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name (Optional)")
             
+            # --- NEW MOBILE NUMBER FIELD ---
+            mobile = st.text_input(
+                "📞 Mobile Number (Optional)", 
+                placeholder="e.g., 971501234567"
+            )
+
             st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
             
             # --- EMOJI RATING IMPLEMENTATION ---
@@ -641,6 +650,7 @@ else:
             if feedback.strip():
                 new_feedback_entry = {
                     "Customer Name": name.strip() if name else "Anonymous",
+                    "Mobile Number": mobile.strip() if mobile else "N/A", # <-- MOBILE SUBMITTED
                     "Email": "N/A",  
                     "Rating": f"{rating} / 5", 
                     "Outlet": outlet_name,
