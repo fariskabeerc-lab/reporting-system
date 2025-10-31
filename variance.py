@@ -1,25 +1,34 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="Google Sheets Form", page_icon="📝", layout="centered")
-
 st.title("📝 Data Entry Form")
 
-# Create connection to Google Sheets (using secrets in Streamlit Cloud)
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ---- Google Sheets Setup ----
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=0"
 
-# Your Google Sheet URL
-sheet_url = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=0#gid=0"
+# Define scope for Google Sheets & Drive
+scope = ["https://spreadsheets.google.com/feeds",
+         "https://www.googleapis.com/auth/drive"]
 
-# Read the current data (if any)
-existing_data = conn.read(spreadsheet=sheet_url, worksheet="Sheet1")
-if existing_data is None or existing_data.empty:
-    existing_data = pd.DataFrame(columns=["Name", "Email", "Age", "Feedback"])
+# Load credentials from Streamlit Secrets
+creds = Credentials.from_service_account_info(
+    st.secrets["google_service_account"], scopes=scope
+)
 
-# Streamlit form for user input
-with st.form("data_entry_form"):
-    st.subheader("Fill in your details 👇")
+# Authorize client
+client = gspread.authorize(creds)
+sh = client.open_by_url(SHEET_URL)
+worksheet = sh.worksheet("streamli")  # Use the sheet/tab name “streamli”
+
+# ---- Read existing data ----
+data = pd.DataFrame(worksheet.get_all_records())
+
+# ---- Streamlit form ----
+with st.form("entry_form"):
+    st.subheader("Enter your details 👇")
 
     name = st.text_input("Name")
     email = st.text_input("Email")
@@ -30,17 +39,13 @@ with st.form("data_entry_form"):
 
     if submitted:
         if name and email:
-            # Add new row
-            new_row = pd.DataFrame([[name, email, age, feedback]], columns=existing_data.columns)
-            updated_data = pd.concat([existing_data, new_row], ignore_index=True)
-
-            # Update Google Sheet
-            conn.update(spreadsheet=sheet_url, worksheet="Sheet1", data=updated_data)
+            # Add new row to Google Sheet
+            worksheet.append_row([name, email, age, feedback])
             st.success("✅ Data submitted successfully!")
         else:
-            st.warning("⚠️ Please fill in all required fields (Name and Email).")
+            st.warning("⚠️ Please fill in all required fields.")
 
-# Display existing records
+# ---- Show data ----
 st.divider()
-st.subheader("📊 Submitted Entries")
-st.dataframe(existing_data)
+st.subheader("📊 Existing Records")
+st.dataframe(data)
