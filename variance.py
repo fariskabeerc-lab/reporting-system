@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials
 st.set_page_config(page_title="Outlet & Feedback Dashboard", layout="wide")
 
 # ==========================================
-# GOOGLE SHEETS SETUP (NEW Section)
+# GOOGLE SHEETS SETUP
 # ==========================================
 # 1. Configuration - REPLACE WITH YOUR SHEET URL
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1MK5WDETIFCRes-c8X16JjrNdrlEpHwv9vHvb96VVtM0/edit?gid=0#gid=0"
@@ -36,11 +36,13 @@ try:
     # Flag for successful connection
     sheets_connected = True
 except Exception as e:
-    st.error(f"⚠️ Google Sheets Connection Error: Ensure your 'google_service_account' is correct and the sheet URL is valid. Error: {e}")
+    # Use a warning instead of a hard error to allow the UI to load for testing, 
+    # but submission won't work.
+    st.warning(f"⚠️ Google Sheets Connection Issue: Ensure 'google_service_account' is set up. Submissions are disabled. Error: {e}")
     sheets_connected = False
 
 # ==========================================
-# CUSTOM STYLES (MODIFIED for Emoji Rating)
+# CUSTOM STYLES (MODIFIED for Emoji Rating - Tick Under Emoji)
 # ==========================================
 CUSTOM_RATING_CSS = """
 <style>
@@ -124,12 +126,13 @@ div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label:has(input:
     border-color: #38C172; /* Green border when selected */
 }
 
-/* The Checkmark Tick (Always appears above the selected emoji box) */
+/* The Checkmark Tick (Now positioned centered under the emoji) */
 div[data-testid="stForm"]:nth-of-type(2) div[role="radiogroup"] label input:checked + div::after {
     content: '✅'; /* Checkmark emoji */
     position: absolute;
-    top: -10px; 
-    right: -10px; 
+    bottom: -10px; /* Position it below the emoji box */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Adjust for its own width to truly center */
     font-size: 16px;
     background-color: white;
     border-radius: 50%;
@@ -236,7 +239,6 @@ def update_supplier_state():
 # --- Lookup Logic Function (Callback for Barcode Form) --- (Existing)
 def lookup_item_and_update_state():
     """Performs the barcode lookup and updates relevant session state variables."""
-    # (Function logic remains the same)
     barcode = st.session_state.lookup_barcode_input
     
     # Reset lookup and previous item states
@@ -306,7 +308,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     gp = ((selling - cost) / cost * 100) if cost else 0
 
     st.session_state.submitted_items.append({
-        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # NEW: Add submission timestamp
+        "Date Submitted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
         "Form Type": form_type,
         "Barcode": barcode.strip(),
         "Item Name": item_name.strip(),
@@ -333,7 +335,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
 
 
 # -------------------------------------------------
-# --- NEW: Function to Submit ALL Collected Data to Google Sheets ---
+# --- Function to Submit ALL Collected Data to Google Sheets ---
 # -------------------------------------------------
 def submit_all_items_to_sheets():
     """Takes all items in session_state and appends them to the Items Google Sheet."""
@@ -344,14 +346,11 @@ def submit_all_items_to_sheets():
     df_to_upload = pd.DataFrame(st.session_state.submitted_items)
     
     # Prepare data rows for gspread
-    # Get header row (in the order you want)
     headers = list(df_to_upload.columns)
     
-    # Check if headers exist in the sheet (simple check by reading first row)
     try:
         current_headers = items_worksheet.row_values(1)
         if not current_headers:
-             # If sheet is empty, write headers first
              items_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{ITEMS_SHEET_NAME}': {e}")
@@ -361,7 +360,6 @@ def submit_all_items_to_sheets():
     data_rows = df_to_upload.values.tolist()
     
     try:
-        # Append all rows at once for efficiency
         items_worksheet.append_rows(data_rows) 
         st.success(f"✅ Successfully submitted {len(st.session_state.submitted_items)} items to Google Sheet: '{ITEMS_SHEET_NAME}'!")
         return True
@@ -371,7 +369,7 @@ def submit_all_items_to_sheets():
 # -------------------------------------------------
 
 # -------------------------------------------------
-# --- NEW: Function to Submit Single Feedback to Google Sheets ---
+# --- Function to Submit Single Feedback to Google Sheets ---
 # -------------------------------------------------
 def submit_feedback_to_sheets(feedback_entry):
     """Appends a single feedback entry (dictionary) to the Feedback Google Sheet."""
@@ -382,11 +380,9 @@ def submit_feedback_to_sheets(feedback_entry):
     # Get header row (in the order you want)
     headers = list(feedback_entry.keys())
     
-    # Check if headers exist in the sheet
     try:
         current_headers = feedback_worksheet.row_values(1)
         if not current_headers:
-             # If sheet is empty, write headers first
              feedback_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{FEEDBACK_SHEET_NAME}': {e}")
@@ -396,7 +392,6 @@ def submit_feedback_to_sheets(feedback_entry):
     data_row = list(feedback_entry.values())
     
     try:
-        # Append the single row
         feedback_worksheet.append_row(data_row) 
         return True
     except Exception as e:
@@ -429,7 +424,7 @@ else:
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
 
     # ==========================================
-    # OUTLET DASHBOARD (MODIFIED: Submit Button)
+    # OUTLET DASHBOARD 
     # ==========================================
     if page == "Outlet Dashboard":
         outlet_name = st.session_state.selected_outlet
@@ -578,8 +573,8 @@ else:
 
             col_submit, col_delete = st.columns([1, 1])
             with col_submit:
-                if st.button("📤 Submit All", type="primary"): # MODIFIED BUTTON LABEL
-                    if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
+                if st.button("📤 Submit All", type="primary"): 
+                    if submit_all_items_to_sheets(): 
                         # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
                         st.session_state.barcode_value = ""
@@ -605,7 +600,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (MODIFIED: EMOJI RATING)
+    # CUSTOMER FEEDBACK PAGE (EMOJI RATING)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -628,16 +623,13 @@ else:
             st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
             
             # --- EMOJI RATING IMPLEMENTATION ---
-            # options: The actual values stored (1, 2, 3, 4, 5)
-            # format_func: The function that displays the corresponding emoji
             rating = st.radio(
                 "hidden_rating_label", # Use a label that won't show
                 options=list(EMOJI_RATING_MAP.keys()),
                 index=4, # Default to 5
-                horizontal=True, # Critical for the horizontal layout
+                horizontal=True, 
                 key="customer_rating_radio",
-                label_visibility="collapsed", # Hide the label
-                # Use the format_func to display the emoji instead of the number
+                label_visibility="collapsed", 
                 format_func=lambda x: EMOJI_RATING_MAP[x] 
             )
             
@@ -650,7 +642,7 @@ else:
                 new_feedback_entry = {
                     "Customer Name": name.strip() if name else "Anonymous",
                     "Email": "N/A",  
-                    "Rating": f"{rating} / 5", # The sheet will receive the numerical value
+                    "Rating": f"{rating} / 5", 
                     "Outlet": outlet_name,
                     "Feedback": feedback,
                     "Submitted At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
