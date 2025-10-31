@@ -421,9 +421,9 @@ else:
     
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
     
-    # --- Inject script for Mobile Number field if on Feedback page ---
-    if page == "Customer Feedback":
-        inject_numeric_keyboard_script("Mobile Number")
+    # --- Inject script for Barcode field ONLY (to prevent layout changes) ---
+    if page == "Outlet Dashboard":
+        inject_numeric_keyboard_script("Barcode Lookup")
 
 
     # ==========================================
@@ -435,10 +435,6 @@ else:
         form_type = st.sidebar.radio("📋 Select Form Type", ["Expiry", "Damages", "Near Expiry"])
         st.markdown("---")
         
-        # Inject the script to change the barcode field's inputmode
-        inject_numeric_keyboard_script("Barcode Lookup")
-
-
         # --- 0. Staff Name Input --- (Existing)
         st.session_state.staff_name = st.text_input(
             "👤 Staff Name (Required)",
@@ -603,7 +599,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (EMOJI RATING & Mobile)
+    # CUSTOMER FEEDBACK PAGE (EMOJI RATING & Mobile - MINIMAL CHANGE)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -623,10 +619,10 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name (Optional)")
             
-            # --- NEW MOBILE NUMBER FIELD ---
+            # --- MOBILE NUMBER ADDED (Standard Streamlit input) ---
             mobile = st.text_input(
                 "📞 Mobile Number (Optional)", 
-                placeholder="e.g., 971501234567"
+                placeholder="Enter mobile number"
             )
 
             st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
