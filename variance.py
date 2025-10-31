@@ -132,14 +132,22 @@ def inject_numeric_keyboard_script(target_label):
     st.markdown(script, unsafe_allow_html=True)
 
 # ==========================================
-# LOAD ITEM DATA (for auto-fill) (MODIFIED)
+# LOAD ITEM DATA (for auto-fill) (CORRECTED)
 # ==========================================
 @st.cache_data
 def load_item_data():
-    # NOTE: The actual file "alllist.xlsx" must be present in the directory 
-    file_path = "alllist(1).xlsx" 
+    # Ensure you are using the correct filename.
+    # The error mentioned 'alllist.xlsx', but you mentioned 'alllist(1).xlsx'.
+    # I will stick to the original name 'alllist.xlsx' unless you confirm the change.
+    file_path = "alllist.xlsx" 
+    
+    # Check if the user is loading 'alllist(1).xlsx' instead of 'alllist.xlsx'
+    # If the file is named 'alllist(1).xlsx', you must change the file_path above.
+    
     try:
-        df = pd.read_excel(file_path)
+        # **FIX: Specify the engine for .xlsx format**
+        df = pd.read_excel(file_path, engine='openpyxl') 
+        
         # Ensure column names are clean
         df.columns = df.columns.str.strip()
         
@@ -147,17 +155,17 @@ def load_item_data():
         required_cols = ["Item Bar Code", "Item Name", "LP Supplier", "Unit", "CF"] 
         for col in required_cols:
             if col not in df.columns:
-                st.error(f"⚠️ Missing critical column: '{col}' in alllist.xlsx. Please check the file.")
+                st.error(f"⚠️ Missing critical column: '{col}' in {file_path}. Please check the file.")
                 return pd.DataFrame()
         return df
     except FileNotFoundError:
         st.error(f"⚠️ Data file not found: {file_path}. Please ensure the file is in the application directory.")
     except Exception as e:
-           st.error(f"⚠️ Error loading alllist.xlsx: {e}")
+           # Re-raise the error to debug, or show a simplified message
+           st.error(f"⚠️ Error loading {file_path}: Please ensure file is valid and 'openpyxl' is installed. Error: {e}")
     return pd.DataFrame()
 
 item_data = load_item_data()
-
 # ==========================================
 # LOGIN SYSTEM (Existing)
 # ==========================================
