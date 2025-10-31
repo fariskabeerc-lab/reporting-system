@@ -36,6 +36,8 @@ try:
     # Flag for successful connection
     sheets_connected = True
 except Exception as e:
+    # Use a warning instead of a hard error to allow the UI to load for testing, 
+    # but submission won't work.
     st.warning(f"⚠️ Google Sheets Connection Issue: Ensure 'google_service_account' is set up. Submissions are disabled. Error: {e}")
     sheets_connected = False
 
@@ -192,7 +194,7 @@ def load_item_data():
     except FileNotFoundError:
         st.error(f"⚠️ Data file not found: {file_path}. Please ensure the file is in the application directory.")
     except Exception as e:
-         st.error(f"⚠️ Error loading alllist.xlsx: {e}")
+        st.error(f"⚠️ Error loading alllist.xlsx: {e}")
     return pd.DataFrame()
 
 item_data = load_item_data()
@@ -349,7 +351,7 @@ def submit_all_items_to_sheets():
     try:
         current_headers = items_worksheet.row_values(1)
         if not current_headers:
-             items_worksheet.append_row(headers)
+              items_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{ITEMS_SHEET_NAME}': {e}")
         return False
@@ -381,7 +383,7 @@ def submit_feedback_to_sheets(feedback_entry):
     try:
         current_headers = feedback_worksheet.row_values(1)
         if not current_headers:
-             feedback_worksheet.append_row(headers)
+              feedback_worksheet.append_row(headers)
     except Exception as e:
         st.error(f"Error checking/writing headers to '{FEEDBACK_SHEET_NAME}': {e}")
         return False
@@ -420,11 +422,6 @@ else:
     st.markdown(CUSTOM_RATING_CSS, unsafe_allow_html=True) 
     
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
-    
-    # --- Inject script for Barcode field ONLY (to prevent layout changes) ---
-    if page == "Outlet Dashboard":
-        inject_numeric_keyboard_script("Barcode Lookup")
-
 
     # ==========================================
     # OUTLET DASHBOARD 
@@ -435,6 +432,10 @@ else:
         form_type = st.sidebar.radio("📋 Select Form Type", ["Expiry", "Damages", "Near Expiry"])
         st.markdown("---")
         
+        # Inject the script to change the barcode field's inputmode
+        inject_numeric_keyboard_script("Barcode Lookup")
+
+
         # --- 0. Staff Name Input --- (Existing)
         st.session_state.staff_name = st.text_input(
             "👤 Staff Name (Required)",
@@ -539,8 +540,8 @@ else:
             final_staff_name = st.session_state.staff_name 
 
             if not st.session_state.barcode_value.strip():
-                 st.toast("❌ Please enter a Barcode before adding to the list.", icon="❌")
-                 st.rerun() 
+                st.toast("❌ Please enter a Barcode before adding to the list.", icon="❌")
+                st.rerun() 
             
             if not final_staff_name.strip():
                 st.toast("❌ Please enter your Staff Name before adding to the list.", icon="❌")
@@ -552,7 +553,7 @@ else:
                 qty,         
                 cost,    
                 selling,
-                expiry,      
+                expiry,          
                 final_supplier,              
                 remarks,     
                 form_type,   
@@ -561,13 +562,19 @@ else:
             )
             
             if success:
-                 st.rerun()
+                st.rerun()
 
 
         # Displaying and managing the list
         if st.session_state.submitted_items:
             st.markdown("### 🧾 Items Added")
             df = pd.DataFrame(st.session_state.submitted_items)
+
+            # --- MODIFICATION START: Add 'No.' column ---
+            # Create a 'No.' column by adding an index column starting from 1
+            df.insert(0, 'No.', range(1, 1 + len(df)))
+            # --- MODIFICATION END ---
+
             st.dataframe(df, use_container_width=True, hide_index=True)
 
             col_submit, col_delete = st.columns([1, 1])
@@ -599,7 +606,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (EMOJI RATING & Mobile - MINIMAL CHANGE)
+    # CUSTOMER FEEDBACK PAGE (EMOJI RATING)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
@@ -619,12 +626,6 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name (Optional)")
             
-            # --- MOBILE NUMBER ADDED (Standard Streamlit input) ---
-            mobile = st.text_input(
-                "📞 Mobile Number (Optional)", 
-                placeholder="Enter mobile number"
-            )
-
             st.markdown("🌟 **Tap an Emoji to Rate Your Experience (1: Bad to 5: Excellent)**")
             
             # --- EMOJI RATING IMPLEMENTATION ---
@@ -646,7 +647,6 @@ else:
             if feedback.strip():
                 new_feedback_entry = {
                     "Customer Name": name.strip() if name else "Anonymous",
-                    "Mobile Number": mobile.strip() if mobile else "N/A", # <-- MOBILE SUBMITTED
                     "Email": "N/A",  
                     "Rating": f"{rating} / 5", 
                     "Outlet": outlet_name,
