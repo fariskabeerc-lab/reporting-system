@@ -21,7 +21,7 @@ creds = Credentials.from_service_account_info(
 # Authorize client
 client = gspread.authorize(creds)
 sh = client.open_by_url(SHEET_URL)
-worksheet = sh.worksheet("streamli")  # Use the sheet/tab name “streamli”
+worksheet = sh.worksheet("Sheet1")  # Use the sheet/tab name “streamli”
 
 # ---- Read existing data ----
 data = pd.DataFrame(worksheet.get_all_records())
