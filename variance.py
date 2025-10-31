@@ -42,7 +42,6 @@ except Exception as e:
 # ==========================================
 # CUSTOM STYLES (Existing)
 # ==========================================
-# ... (CUSTOM_RATING_CSS remains the same) ...
 CUSTOM_RATING_CSS = """
 <style>
 /* Target the div that contains the radio buttons */
@@ -137,7 +136,7 @@ def inject_numeric_keyboard_script(target_label):
     st.markdown(script, unsafe_allow_html=True)
 
 # ==========================================
-# LOAD ITEM DATA (for auto-fill) (Existing)
+# LOAD ITEM DATA (for auto-fill) (MODIFIED)
 # ==========================================
 @st.cache_data
 def load_item_data():
@@ -148,8 +147,8 @@ def load_item_data():
         # Ensure column names are clean
         df.columns = df.columns.str.strip()
         
-        # Check only critical columns needed for the app to run
-        required_cols = ["Item Bar Code", "Item Name", "LP Supplier"] 
+        # Check only critical columns needed for the app to run (ADDED 'Unit' and 'CF')
+        required_cols = ["Item Bar Code", "Item Name", "LP Supplier", "Unit", "CF"] 
         for col in required_cols:
             if col not in df.columns:
                 st.error(f"⚠️ Missing critical column: '{col}' in alllist.xlsx. Please check the file.")
@@ -158,7 +157,7 @@ def load_item_data():
     except FileNotFoundError:
         st.error(f"⚠️ Data file not found: {file_path}. Please ensure the file is in the application directory.")
     except Exception as e:
-         st.error(f"⚠️ Error loading alllist.xlsx: {e}")
+           st.error(f"⚠️ Error loading alllist.xlsx: {e}")
     return pd.DataFrame()
 
 item_data = load_item_data()
@@ -173,12 +172,14 @@ outlets = [
 ]
 password = "123123"
 
-# Initialize session state variables (Existing)
+# Initialize session state variables (MODIFIED: Added unit and cf state variables)
 for key in ["logged_in", "selected_outlet", "submitted_items",
-             "barcode_value", "item_name_input", "supplier_input", 
-             "temp_item_name_manual", "temp_supplier_manual",
-             "lookup_data", "submitted_feedback", "barcode_found",
-             "staff_name"]: 
+            "barcode_value", "item_name_input", "supplier_input", 
+            "unit_input", "cf_input", # <--- NEW state variables
+            "temp_item_name_manual", "temp_supplier_manual",
+            "temp_unit_manual", "temp_cf_manual", # <--- NEW temporary manual state variables
+            "lookup_data", "submitted_feedback", "barcode_found",
+            "staff_name"]: 
     
     if key not in st.session_state:
         if key in ["submitted_items", "submitted_feedback"]:
@@ -190,7 +191,7 @@ for key in ["logged_in", "selected_outlet", "submitted_items",
         else:
             st.session_state[key] = ""
 
-# --- Helper functions to synchronize manual inputs --- (Existing)
+# --- Helper functions to synchronize manual inputs --- (MODIFIED: Added unit and cf)
 def update_item_name_state():
     """Updates the main item_name_input state variable from the temp manual input."""
     st.session_state.item_name_input = st.session_state.temp_item_name_manual
@@ -198,56 +199,70 @@ def update_item_name_state():
 def update_supplier_state():
     """Updates the main supplier_input state variable from the temp manual input."""
     st.session_state.supplier_input = st.session_state.temp_supplier_manual
+
+def update_unit_state(): # <--- NEW helper function
+    """Updates the main unit_input state variable from the temp manual input."""
+    st.session_state.unit_input = st.session_state.temp_unit_manual
+
+def update_cf_state(): # <--- NEW helper function
+    """Updates the main cf_input state variable from the temp manual input."""
+    st.session_state.cf_input = st.session_state.temp_cf_manual
 # ------------------------------------------------------------------
 
-# --- Lookup Logic Function (Callback for Barcode Form) --- (Existing)
+# --- Lookup Logic Function (Callback for Barcode Form) --- (MODIFIED)
 def lookup_item_and_update_state():
     """Performs the barcode lookup and updates relevant session state variables."""
-    # (Function logic remains the same)
     barcode = st.session_state.lookup_barcode_input
     
-    # Reset lookup and previous item states
+    # Reset lookup and previous item states (ADDED unit and cf)
     st.session_state.lookup_data = pd.DataFrame()
     st.session_state.barcode_value = barcode 
     st.session_state.item_name_input = ""
     st.session_state.supplier_input = ""
+    st.session_state.unit_input = "" # <--- Reset NEW state
+    st.session_state.cf_input = ""   # <--- Reset NEW state
     st.session_state.barcode_found = False
     
-    # Reset temporary keys for manual entry fields
+    # Reset temporary keys for manual entry fields (ADDED unit and cf)
     st.session_state.temp_item_name_manual = ""
     st.session_state.temp_supplier_manual = "" 
+    st.session_state.temp_unit_manual = "" # <--- Reset NEW temp state
+    st.session_state.temp_cf_manual = ""   # <--- Reset NEW temp state
     
     if not barcode:
         st.toast("⚠️ Barcode cleared.", icon="❌")
         return
 
     if not item_data.empty:
-        match = item_data[item_data["Item Bar Code"].astype(str).str.strip() == str(barcode).strip()]
+        # Match using string comparison on stripped values
+        match = item_data[item_data["Item Bar Code"].astype(str).str.strip() == str(barcode).strip()] 
         
         if not match.empty:
             st.session_state.barcode_found = True
             row = match.iloc[0]
             
-            # 1. Prepare data for display table
-            df_display = row[["Item Name", "LP Supplier"]].to_frame().T
-            df_display.columns = ["Item Name", "Supplier"]
+            # 1. Prepare data for display table (ADDED Unit and CF)
+            df_display = row[["Item Name", "LP Supplier", "Unit", "CF"]].to_frame().T
+            df_display.columns = ["Item Name", "Supplier", "Unit", "CF"] # Updated column names for display
             st.session_state.lookup_data = df_display.reset_index(drop=True)
             
-            # 2. Automatically transfer details to the main state variables
+            # 2. Automatically transfer details to the main state variables (ADDED Unit and CF)
             st.session_state.item_name_input = str(row["Item Name"])
             st.session_state.supplier_input = str(row["LP Supplier"])
+            st.session_state.unit_input = str(row["Unit"]) # <--- Set NEW state
+            st.session_state.cf_input = str(row["CF"])     # <--- Set NEW state
             
             st.toast("✅ Item found. Details loaded.", icon="🔍")
         else:
             # Barcode not found 
             st.session_state.barcode_found = False 
-            st.toast("⚠️ Barcode not found. Please enter item name and supplier manually.", icon="⚠️")
+            st.toast("⚠️ Barcode not found. Please enter item name, supplier, unit, and cf manually.", icon="⚠️")
 # ------------------------------------------------------------------
 
 # -------------------------------------------------
-# --- Main Form Submission Handler (Modified to just collect data) ---
+# --- Main Form Submission Handler (MODIFIED: Added unit and cf) ---
 # -------------------------------------------------
-def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier, remarks, form_type, outlet_name, staff_name):
+def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier, unit, cf, remarks, form_type, outlet_name, staff_name):
     
     # Validation (Remains the same)
     if not barcode.strip():
@@ -258,6 +273,15 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
         return False
     if not staff_name.strip():
         st.toast("⚠️ Staff Name is required before adding.", icon="❌")
+        return False
+    if not unit.strip(): # <--- NEW validation
+        st.toast("⚠️ Unit is required before adding.", icon="❌")
+        return False
+    # CF is often numeric, so maybe check if it's convertible to a number
+    try:
+        cf_float = float(cf) 
+    except ValueError:
+        st.toast("⚠️ CF must be a valid number.", icon="❌")
         return False
 
     try:
@@ -277,6 +301,8 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
         "Form Type": form_type,
         "Barcode": barcode.strip(),
         "Item Name": item_name.strip(),
+        "Unit": unit.strip(), # <--- NEW field
+        "CF": cf_float,      # <--- NEW field (as float)
         "Qty": qty,
         "Cost": round(cost, 2),
         "Selling": round(selling, 2),
@@ -300,7 +326,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
 
 
 # -------------------------------------------------
-# --- NEW: Function to Submit ALL Collected Data to Google Sheets ---
+# --- NEW: Function to Submit ALL Collected Data to Google Sheets (NO CHANGE NEEDED) ---
 # -------------------------------------------------
 def submit_all_items_to_sheets():
     """Takes all items in session_state and appends them to the Items Google Sheet."""
@@ -338,7 +364,7 @@ def submit_all_items_to_sheets():
 # -------------------------------------------------
 
 # -------------------------------------------------
-# --- NEW: Function to Submit Single Feedback to Google Sheets ---
+# --- NEW: Function to Submit Single Feedback to Google Sheets (NO CHANGE NEEDED) ---
 # -------------------------------------------------
 def submit_feedback_to_sheets(feedback_entry):
     """Appends a single feedback entry (dictionary) to the Feedback Google Sheet."""
@@ -373,7 +399,7 @@ def submit_feedback_to_sheets(feedback_entry):
 
 
 # ==========================================
-# PAGE SELECTION (Existing)
+# PAGE SELECTION (MODIFIED: Item Dashboard)
 # ==========================================
 if not st.session_state.logged_in:
     st.title("🔐 Outlet Login")
@@ -396,7 +422,7 @@ else:
     page = st.sidebar.radio("📌 Select Page", ["Outlet Dashboard", "Customer Feedback"])
 
     # ==========================================
-    # OUTLET DASHBOARD (MODIFIED: Submit Button)
+    # OUTLET DASHBOARD (MODIFIED: Manual Input)
     # ==========================================
     if page == "Outlet Dashboard":
         outlet_name = st.session_state.selected_outlet
@@ -440,14 +466,15 @@ else:
                     use_container_width=True
                 )
 
-        # --- 2. Item Details Display Panel (Existing) ---
+        # --- 2. Item Details Display Panel (Existing/Auto-populated with Unit/CF) ---
         if not st.session_state.lookup_data.empty:
             st.markdown("### 🔍 Found Item Details")
             st.dataframe(st.session_state.lookup_data, use_container_width=True, hide_index=True)
         
-        # --- 2b. Manual Entry Fallback (Existing) ---
+        # --- 2b. Manual Entry Fallback (MODIFIED: Added unit and cf) ---
         if st.session_state.barcode_value.strip() and not st.session_state.barcode_found:
              st.markdown("### ⚠️ Manual Item Entry (Barcode Not Found)")
+             
              col_manual_name, col_manual_supplier = st.columns(2)
              with col_manual_name:
                  st.text_input(
@@ -463,14 +490,51 @@ else:
                      key="temp_supplier_manual", 
                      on_change=update_supplier_state
                  )
+             
+             col_manual_unit, col_manual_cf = st.columns(2) # <--- NEW row for manual input
+             with col_manual_unit:
+                 st.text_input(
+                     "Unit (Manual)", 
+                     value=st.session_state.unit_input, 
+                     key="temp_unit_manual", 
+                     on_change=update_unit_state
+                 )
+             with col_manual_cf:
+                 # Use number_input for CF for correct data type/keyboard on mobile
+                 st.number_input( 
+                     "CF (Conversion Factor) (Manual)", 
+                     min_value=1.0, 
+                     value=float(st.session_state.cf_input or 1.0), # Convert to float for number_input
+                     step=1.0,
+                     key="temp_cf_manual", 
+                     on_change=update_cf_state
+                 )
+
 
         if st.session_state.barcode_value.strip():
              st.markdown("---") 
 
 
-        # --- 3. Start of the Main Item Entry Form (Existing) ---
+        # --- 3. Start of the Main Item Entry Form (MODIFIED: Added unit/cf display) ---
         with st.form("item_entry_form", clear_on_submit=True): 
             
+            final_unit = st.session_state.unit_input or ""
+            final_cf = st.session_state.cf_input or ""
+
+            # --- Row 0: Auto-filled Item Details ---
+            st.markdown("### Auto-filled Item Details (Review/Edit Below)")
+            col_info1, col_info2, col_info3, col_info4 = st.columns(4)
+            with col_info1:
+                st.info(f"**Item Name:** {st.session_state.item_name_input or 'N/A'}")
+            with col_info2:
+                st.info(f"**Supplier:** {st.session_state.supplier_input or 'N/A'}")
+            with col_info3:
+                st.info(f"**Unit:** {final_unit or 'N/A'}")
+            with col_info4:
+                st.info(f"**CF:** {final_cf or 'N/A'}")
+            st.markdown("---")
+
+
             # --- Row 1: Qty and Expiry ---
             col1, col2 = st.columns(2)
             with col1:
@@ -504,11 +568,13 @@ else:
             )
             # --- End of the Item Entry Form ---
 
-        # --- Handle Main Form Submission ONLY on Button Click (Existing) ---
+        # --- Handle Main Form Submission ONLY on Button Click (MODIFIED: Passes unit and cf) ---
         if submitted_item:
             
             final_item_name = st.session_state.item_name_input
             final_supplier = st.session_state.supplier_input
+            final_unit = st.session_state.unit_input # <--- Get final unit
+            final_cf = st.session_state.cf_input     # <--- Get final cf
             final_staff_name = st.session_state.staff_name 
 
             if not st.session_state.barcode_value.strip():
@@ -527,6 +593,8 @@ else:
                 selling, 
                 expiry,      
                 final_supplier,              
+                final_unit, # <--- Pass unit
+                final_cf,   # <--- Pass cf
                 remarks,     
                 form_type,   
                 outlet_name,
@@ -547,14 +615,18 @@ else:
             with col_submit:
                 if st.button("📤 Submit All to Google Sheets", type="primary"): # MODIFIED BUTTON LABEL
                     if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
-                        # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
+                        # FINAL RESET OF ALL ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
                         st.session_state.barcode_value = ""
                         st.session_state.item_name_input = ""
                         st.session_state.supplier_input = ""
+                        st.session_state.unit_input = "" # <--- Reset NEW state
+                        st.session_state.cf_input = ""   # <--- Reset NEW state
                         st.session_state.barcode_found = False
                         st.session_state.temp_item_name_manual = "" 
                         st.session_state.temp_supplier_manual = "" 
+                        st.session_state.temp_unit_manual = "" # <--- Reset NEW temp state
+                        st.session_state.temp_cf_manual = ""   # <--- Reset NEW temp state
                         st.session_state.lookup_data = pd.DataFrame() 
                         st.session_state.staff_name = "" 
                         st.rerun() 
@@ -572,7 +644,7 @@ else:
 
     
     # ==========================================
-    # CUSTOMER FEEDBACK PAGE (MODIFIED: Submission Logic)
+    # CUSTOMER FEEDBACK PAGE (NO CHANGE NEEDED)
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
