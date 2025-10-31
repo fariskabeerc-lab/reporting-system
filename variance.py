@@ -43,6 +43,7 @@ except Exception as e:
 # ==========================================
 # CUSTOM STYLES (Existing)
 # ==========================================
+# ... (CUSTOM_RATING_CSS remains the same) ...
 CUSTOM_RATING_CSS = """
 <style>
 /* Target the div that contains the radio buttons */
@@ -101,6 +102,7 @@ div[data-testid="stForm"] > div > div:nth-child(4) div[role="radiogroup"] label 
 }
 </style>
 """
+
 # ==========================================
 # CUSTOM JAVASCRIPT/HTML TO FORCE NUMERIC KEYBOARD (Existing)
 # ==========================================
@@ -132,26 +134,20 @@ def inject_numeric_keyboard_script(target_label):
     st.markdown(script, unsafe_allow_html=True)
 
 # ==========================================
-# LOAD ITEM DATA (for auto-fill) (CORRECTED)
+# LOAD ITEM DATA (for auto-fill) (MODIFIED FOR EXCEL ERROR AND UNIT/CF)
 # ==========================================
 @st.cache_data
 def load_item_data():
-    # Ensure you are using the correct filename.
-    # The error mentioned 'alllist.xlsx', but you mentioned 'alllist(1).xlsx'.
-    # I will stick to the original name 'alllist.xlsx' unless you confirm the change.
+    # NOTE: The actual file "alllist.xlsx" must be present in the directory 
     file_path = "alllist(1).xlsx" 
-    
-    # Check if the user is loading 'alllist(1).xlsx' instead of 'alllist.xlsx'
-    # If the file is named 'alllist(1).xlsx', you must change the file_path above.
-    
     try:
-        # **FIX: Specify the engine for .xlsx format**
+        # **FIX:** Specify the engine for .xlsx format to resolve the error
         df = pd.read_excel(file_path, engine='openpyxl') 
         
         # Ensure column names are clean
         df.columns = df.columns.str.strip()
         
-        # Check all critical columns needed for the app to run
+        # Check all critical columns needed for the app to run (ADDED Unit and CF)
         required_cols = ["Item Bar Code", "Item Name", "LP Supplier", "Unit", "CF"] 
         for col in required_cols:
             if col not in df.columns:
@@ -161,11 +157,11 @@ def load_item_data():
     except FileNotFoundError:
         st.error(f"⚠️ Data file not found: {file_path}. Please ensure the file is in the application directory.")
     except Exception as e:
-           # Re-raise the error to debug, or show a simplified message
-           st.error(f"⚠️ Error loading {file_path}: Please ensure file is valid and 'openpyxl' is installed. Error: {e}")
+           st.error(f"⚠️ Error loading {file_path}: Please ensure the file is a valid .xlsx file and 'openpyxl' is installed. Error: {e}")
     return pd.DataFrame()
 
 item_data = load_item_data()
+
 # ==========================================
 # LOGIN SYSTEM (Existing)
 # ==========================================
@@ -194,7 +190,7 @@ for key in ["logged_in", "selected_outlet", "submitted_items",
             st.session_state[key] = ""
 
 
-# --- Lookup Logic Function (Callback for Barcode Form) --- (MODIFIED)
+# --- Lookup Logic Function (Callback for Barcode Form) --- (MODIFIED for Unit/CF)
 def lookup_item_and_update_state():
     """Performs the barcode lookup and updates relevant session state variables."""
     barcode = st.session_state.lookup_barcode_input
@@ -231,7 +227,7 @@ def lookup_item_and_update_state():
             # Use a default of 1.0 for CF if it's missing/invalid, to prevent errors in number_input
             try:
                 cf_val = float(row["CF"]) 
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, KeyError): # Added KeyError for safety
                 cf_val = 1.0
                 
             st.session_state.unit_input = str(row["Unit"])  # <--- Set NEW state
@@ -259,6 +255,7 @@ def process_item_entry(barcode, item_name, qty, cost, selling, expiry, supplier,
     if not staff_name.strip():
         st.toast("⚠️ Staff Name is required before adding.", icon="❌")
         return False
+    # Unit is often a requirement for inventory systems
     if not unit.strip(): 
         st.toast("⚠️ Unit is required before adding.", icon="❌")
         return False
@@ -622,7 +619,7 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name")
             
-            st.markdown("🌟 **Rate Our Outlet from 1-5**")
+            st.markdown("🌟 **Rate Our Outlet**")
             rating = st.radio(
                 "hidden_rating_label", 
                 options=[1, 2, 3, 4, 5],
@@ -648,6 +645,15 @@ else:
                 
                 if submit_feedback_to_sheets(new_feedback_entry):
                     st.session_state.submitted_feedback.append(new_feedback_entry)
-                    st.success("✅ Feedback submitted successfully")
+                    st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
             else:
                 st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
+
+        if st.session_state.submitted_feedback:
+            st.markdown("### 🗂 Recent Customer Feedback")
+            df = pd.DataFrame(st.session_state.submitted_feedback)
+            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+
+            if st.button("🗑 Clear All Feedback Records", type="secondary"):
+                st.session_state.submitted_feedback = []
+                st.rerun()
