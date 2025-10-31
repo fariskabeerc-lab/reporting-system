@@ -575,7 +575,7 @@ else:
     # ==========================================
     else:
         outlet_name = st.session_state.selected_outlet
-        st.title("📝 Customer Feedback Form")
+        st.title("📝 Kindly rate your shopping experience with us")
         st.markdown(f"Submitting feedback for **{outlet_name}**")
         st.markdown("---")
         
