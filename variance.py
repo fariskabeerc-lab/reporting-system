@@ -545,7 +545,7 @@ else:
 
             col_submit, col_delete = st.columns([1, 1])
             with col_submit:
-                if st.button("📤 Submit All to Google Sheets", type="primary"): # MODIFIED BUTTON LABEL
+                if st.button("📤 Submit All", type="primary"): # MODIFIED BUTTON LABEL
                     if submit_all_items_to_sheets(): # CALL NEW SUBMISSION FUNCTION
                         # FINAL RESET OF ITEM LOOKUP DATA AND STAFF NAME
                         st.session_state.submitted_items = []
@@ -583,7 +583,7 @@ else:
         with st.form("feedback_form", clear_on_submit=True):
             name = st.text_input("Customer Name")
             
-            st.markdown("🌟 **Rate Our Outlet**")
+            st.markdown("🌟 **Rate Our Outlet from 1 to 5**")
             # --- CUSTOM RATING IMPLEMENTATION ---
             rating = st.radio(
                 "hidden_rating_label", # Use a label that won't show
@@ -614,12 +614,3 @@ else:
                     st.success("✅ Feedback submitted successfully to Google Sheets! The form has been cleared.")
             else:
                 st.error("⚠️ Please fill **Customer Name** and **Feedback** before submitting.")
-
-        if st.session_state.submitted_feedback:
-            st.markdown("### 🗂 Recent Customer Feedback")
-            df = pd.DataFrame(st.session_state.submitted_feedback)
-            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-
-            if st.button("🗑 Clear All Feedback Records", type="secondary"):
-                st.session_state.submitted_feedback = []
-                st.rerun()
